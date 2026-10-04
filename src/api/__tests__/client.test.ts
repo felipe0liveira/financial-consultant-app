@@ -4,8 +4,14 @@ import { apiFetch, installAuthHooks, NetworkError, SessionExpiredError } from ".
 const resp = (status: number, body: unknown = {}) =>
   ({ ok: status < 400, status, json: async () => body }) as unknown as Response;
 
-function setup(renewTo: string | null) {
-  const h = { getToken: () => "old", renew: jest.fn().mockResolvedValue(renewTo), onExpired: jest.fn() };
+function setup(renewTo: string | null | "deferred", token: string | null = "old") {
+  const outcome =
+    renewTo === "deferred"
+      ? { kind: "deferred" }
+      : renewTo === null
+        ? { kind: "failed" }
+        : { kind: "renewed", token: renewTo };
+  const h = { getToken: () => token, renew: jest.fn().mockResolvedValue(outcome), onExpired: jest.fn() };
   installAuthHooks(h);
   return h;
 }
@@ -45,5 +51,22 @@ test("network failure is a NetworkError, not a sign-out", async () => {
   const h = setup("new");
   const f = jest.fn().mockRejectedValue(new TypeError("Network request failed"));
   await expect(apiFetch("me", {}, f)).rejects.toBeInstanceOf(NetworkError);
+  expect(h.onExpired).not.toHaveBeenCalled();
+});
+
+test("no token: no request, no renewal, no sign-out", async () => {
+  const h = setup("new", null);
+  const f = jest.fn();
+  await expect(apiFetch("me", {}, f)).rejects.toBeInstanceOf(SessionExpiredError);
+  expect(f).not.toHaveBeenCalled();
+  expect(h.renew).not.toHaveBeenCalled();
+  expect(h.onExpired).not.toHaveBeenCalled();
+});
+
+test("401 + deferred renewal is a NetworkError, not a sign-out", async () => {
+  const h = setup("deferred");
+  const f = jest.fn().mockResolvedValue(resp(401));
+  await expect(apiFetch("me", {}, f)).rejects.toBeInstanceOf(NetworkError);
+  expect(h.renew).toHaveBeenCalledTimes(1);
   expect(h.onExpired).not.toHaveBeenCalled();
 });

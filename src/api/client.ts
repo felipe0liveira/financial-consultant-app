@@ -26,11 +26,19 @@ export class SessionExpiredError extends Error {
   }
 }
 
+export type RenewOutcome =
+  | { kind: "renewed"; token: string }
+  | { kind: "deferred" }
+  | { kind: "failed" };
+
 /** Hooks the AuthProvider installs so the client can read and renew the session. */
 export interface AuthHooks {
   getToken(): string | null;
-  /** Renews the session; resolves the new token, or null when renewal failed for good. */
-  renew(): Promise<string | null>;
+  /**
+   * Renews the session. "deferred" means a transient problem (offline, BFF/Google unavailable):
+   * the session is kept and the request fails as a NetworkError. "failed" is definitive.
+   */
+  renew(): Promise<RenewOutcome>;
   /** Called when the session is unrecoverable: sign out locally. */
   onExpired(): void;
 }
@@ -61,18 +69,23 @@ export async function apiFetch<T>(
   init: RequestInit = {},
   fetchImpl: typeof fetch = fetch
 ): Promise<T> {
-  if (!hooks) throw new SessionExpiredError();
-  let res = await send(path, init, hooks.getToken(), fetchImpl);
+  const h = hooks;
+  if (!h) throw new SessionExpiredError();
+  const token = h.getToken();
+  // Not signed in: no request, no renewal, no sign-out side effects.
+  if (!token) throw new SessionExpiredError();
+  let res = await send(path, init, token, fetchImpl);
 
   if (res.status === 401) {
-    const renewed = await hooks.renew();
-    if (!renewed) {
-      hooks.onExpired();
+    const outcome = await h.renew();
+    if (outcome.kind === "deferred") throw new NetworkError();
+    if (outcome.kind === "failed") {
+      h.onExpired();
       throw new SessionExpiredError();
     }
-    res = await send(path, init, renewed, fetchImpl);
+    res = await send(path, init, outcome.token, fetchImpl);
     if (res.status === 401) {
-      hooks.onExpired();
+      h.onExpired();
       throw new SessionExpiredError();
     }
   }
