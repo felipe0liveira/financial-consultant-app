@@ -80,9 +80,15 @@ live in `.sdd/specs/` and `.sdd/plans/` and are the durable history (no GitHub i
 - Small, focused **Conventional Commits** (`feat:`, `fix:`, `docs:`, `chore:`, `test:`, ...).
 - **Never run `git push`.** Claude commits; the developer pushes.
 
-## Pending
+## Google ID token audience (verified 2026-10-04)
 
-- **Task 6 spike (ID token audience check):** verify that the Google ID token's `aud` is the iOS
-  client ID when only `iosClientId` is configured. If the token is missing without
-  `webClientId`, fall back to a dedicated mobile-only Web OAuth client (never the web app's own
-  client) passed as `webClientId` and added to the BFF's `MOBILE_OAUTH_CLIENT_IDS`.
+With only `iosClientId` configured, Google Sign-In returns a non-null ID token whose audience is
+the **iOS client ID**, which the BFF allow-list (`MOBILE_OAUTH_CLIENT_IDS`) accepts. No
+`webClientId` / server client is needed; `GOOGLE_SERVER_CLIENT_ID` stays empty.
+
+## Native build notes
+
+- Xcode 27 (iOS 27 SDK) requires the UIScene life cycle; on Expo SDK 57 it is enabled via
+  `expo-build-properties` → `ios.enableSceneSupport` in `app.config.ts`. Drop it on SDK 58+.
+- `ios/` is generated (`bunx expo prebuild -p ios`) and git-ignored; run `pod install` inside it
+  (CocoaPods needs a UTF-8 locale: `export LANG=en_US.UTF-8`).

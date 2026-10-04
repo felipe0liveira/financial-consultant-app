@@ -58,6 +58,13 @@ the same GCP project yields the same `sub` for the same person → same HMAC →
 same data. **Parity of data is automatic once the right `sub` reaches the API through a
 trusted path.**
 
+### Mobile gateway (implemented 2026-10-04)
+
+The iOS app authenticates through the web BFF: Google Sign-In (iOS OAuth client) → ID token →
+`POST /api/auth/mobile` → BFF-signed 7-day bearer → `/api/v1/*`. Verified end to end on the
+Simulator: the ID token's audience is the iOS client ID (no server/web client needed), and the
+upstream `/me` call is logged with `"channel":"mobile"`.
+
 ### Constraints for the mobile client
 
 - **Never ship `WEB_API_SECRET` in the app binary.** Anyone extracting it could impersonate any
