@@ -10,8 +10,9 @@ SplashScreen.preventAutoHideAsync();
 function RootNavigator() {
   const { status } = useAuth();
   const { scheme, colors } = useTheme();
-  const [fontsLoaded] = useFonts({ Bitter_400Regular, Bitter_600SemiBold, Bitter_700Bold });
-  const ready = status !== "loading" && fontsLoaded;
+  const [fontsLoaded, fontError] = useFonts({ Bitter_400Regular, Bitter_600SemiBold, Bitter_700Bold });
+  // On a font error, fall back silently to the system font instead of blocking the app forever.
+  const ready = status !== "loading" && (fontsLoaded || fontError !== null);
 
   useEffect(() => {
     if (ready) SplashScreen.hide();

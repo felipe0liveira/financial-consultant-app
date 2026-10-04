@@ -27,6 +27,8 @@ export default function Login() {
     try {
       const err = await signIn();
       if (err) setError(MESSAGES[err]);
+    } catch {
+      setError(MESSAGES.google);
     } finally {
       setBusy(false);
     }
