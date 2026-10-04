@@ -21,35 +21,42 @@
 
 ---
 
-## Decisions to close in Phase 0
+## Decisions
 
-### D1 — How the iOS app authenticates (blocking)
+| ID | Decision | Status |
+|---|---|---|
+| D1 | Auth: **Option A — BFF as mobile gateway** | ✅ Decided 2026-10-04 |
+| D2 | Tech: **Expo / React Native + TypeScript** | ✅ Decided 2026-10-04 |
+| D3 | Minimum iOS version | Open |
+| D4 | Push delivery (APNs vs FCM) | Open — before Phase 5 |
+
+### D1 — How the iOS app authenticates — ✅ decided: Option A
 
 Today the API admits only the web BFF ([`02-api-and-auth.md`](02-api-and-auth.md) §1). The app
 must never embed `WEB_API_SECRET`.
 
 | Option | Summary | Repos touched |
 |---|---|---|
-| **A. BFF as mobile gateway** *(recommended)* | iOS uses Google Sign-In with an **iOS OAuth client**, sends the Google ID token to a new BFF endpoint (e.g. `POST /api/auth/mobile`). The BFF verifies it (issuer, audience = iOS client ID, signature, expiry), then issues its own signed **bearer token** (same claims as the web session). BFF `/api/v1/*` handlers accept that bearer in addition to the cookie and forward to the API exactly as today. | `-web` only |
+| **A. BFF as mobile gateway** *(chosen)* | iOS uses Google Sign-In with an **iOS OAuth client**, sends the Google ID token to a new BFF endpoint (e.g. `POST /api/auth/mobile`). The BFF verifies it (issuer, audience = iOS client ID, signature, expiry), then issues its own signed **bearer token** (same claims as the web session). BFF `/api/v1/*` handlers accept that bearer in addition to the cookie and forward to the API exactly as today. | `-web` only |
 | B. API verifies Google ID tokens | API gains a Google ID-token verifier and the iOS client ID config; requires reopening Cloud Run ingress or putting a gateway in front, since end-user tokens can't pass `run.invoker`. | `-api` + infra |
 
 **Why A:** zero changes to the API's trust model or Cloud Run IAM, secrets stay server-side, the
 iOS app reuses the BFF's already-camelCased contract, and the BFF already owns OAuth by design.
 Cost: one extra network hop (same region, negligible).
 
-Sub-decisions for A: bearer lifetime (web uses 7 days, no refresh) and whether to add a refresh
+Still open for the spec: bearer lifetime (web uses 7 days, no refresh) and whether to add a refresh
 mechanism (iOS can silently re-run Google Sign-In to mint a fresh token).
 
-### D2 — App technology (blocking)
+### D2 — App technology — ✅ decided: Expo
 
 | Option | Fit |
 |---|---|
-| **Expo / React Native + TypeScript** *(recommended)* | Same language as the web; pure helpers (`lib/money.ts`, `lib/bills.ts` status derivation, category inference, TanStack Query patterns) can be ported almost verbatim; Android later is cheap. Native Google Sign-In and APNs available via well-maintained modules; builds on the Mac with Xcode. |
+| **Expo / React Native + TypeScript** *(chosen)* | Same language as the web; pure helpers (`lib/money.ts`, `lib/bills.ts` status derivation, category inference, TanStack Query patterns) can be ported almost verbatim; Android later is cheap. Native Google Sign-In and APNs available via well-maintained modules; builds on the Mac with Xcode. Renders native UIKit views — **no WebView**. Google Sign-In requires a development build (not Expo Go). |
 | SwiftUI (native) | Best platform feel and smallest runtime; all logic rewritten in Swift; Android would be a second app. |
 
 ### D3 — Minimum iOS version
 
-Proposal: iOS 17+ (tune once D2 is decided).
+Proposal: iOS 17+ (confirm against the Expo SDK's supported range during the Phase 0 spec).
 
 ### D4 — Push delivery
 
@@ -61,10 +68,10 @@ Android later). Decide before Phase 5.
 ## Phases
 
 ### Phase 0 — Foundations & decisions
-- Close D1–D4; write a `CLAUDE.md` for this repo.
+- Close D3 (D1 and D2 are decided); write a `CLAUDE.md` for this repo.
 - Create the **iOS OAuth client** in GCP project `financial-consultant-501119` (same project as
   the web client, so `sub` matches).
-- Specs + plans: `-web` mobile auth endpoint + bearer support (if D1 = A).
+- Specs + plans: `-web` mobile auth endpoint + bearer support; `-app` Expo scaffold + sign-in.
 - Apple Developer account / bundle id (`TBD` until naming; use a placeholder id).
 
 **Exit:** decisions recorded in `docs/`, all Phase 1 specs/plans approved.
@@ -132,7 +139,6 @@ Android later). Decide before Phase 5.
 | 5 | device tokens + native push sender | proxy routes for device tokens | notifications |
 | 6 | — | — | import, release |
 
-(If D1 = B, Phase 0/1 move to `-api` + infra instead of `-web`.)
 
 ## Side follow-ups found while mapping (not part of this plan)
 
