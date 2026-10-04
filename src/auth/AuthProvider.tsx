@@ -1,9 +1,11 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import {
   createContext, use, useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren,
 } from "react";
 import { AppState } from "react-native";
 import { apiFetch, installAuthHooks, type RenewOutcome } from "../api/client";
+import { clearQueryCache } from "../query/client";
 import { exchangeIdToken } from "./exchange";
 import { freshIdTokenSilently, googleSignOut, signInInteractive } from "./google";
 import { needsRenewal, type StoredSession } from "./session";
@@ -23,6 +25,7 @@ interface AuthValue {
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
+const CACHE_OWNER_KEY = "fc-cache-owner";
 const EXPIRED_NOTICE = "Sua sessão expirou. Entre novamente para continuar.";
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -35,6 +38,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const pendingRenewal = useRef(false);
   /** Bumped on every local sign-out so an in-flight renewal cannot resurrect a signed-out session. */
   const generation = useRef(0);
+  const identityInFlight = useRef<Promise<void> | null>(null);
 
   /** Persists and activates a session. Returns false (and leaves nothing stored) if a sign-out raced it. */
   const adopt = useCallback(async (s: StoredSession, gen: number): Promise<boolean> => {
@@ -57,6 +61,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setUserId(null);
     setNotice(withNotice);
     setStatus("signedOut");
+    await clearQueryCache().catch(() => {});
+    await AsyncStorage.removeItem(CACHE_OWNER_KEY).catch(() => {});
     await clearSession().catch(() => {});
     await googleSignOut().catch(() => {});
   }, []);
@@ -90,15 +96,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [adopt]);
 
   /** Fetches the identity; a no-op without a session (never sends an unauthenticated /me). */
-  const loadIdentity = useCallback(async () => {
-    if (!sessionRef.current) return;
+  const loadIdentity = useCallback((): Promise<void> => {
+    if (!sessionRef.current) return Promise.resolve();
+    if (identityInFlight.current) return identityInFlight.current;
     const gen = generation.current;
-    try {
-      const me = await apiFetch<{ user_id: string }>("me");
-      if (gen === generation.current) setUserId(me.user_id);
-    } catch {
-      // Offline or transient: identity is re-fetched on the next foreground.
-    }
+    identityInFlight.current = (async () => {
+      try {
+        const me = await apiFetch<{ user_id: string }>("me");
+        if (gen !== generation.current) return;
+        const owner = await AsyncStorage.getItem(CACHE_OWNER_KEY).catch(() => null);
+        if (owner && owner !== me.user_id) await clearQueryCache().catch(() => {});
+        await AsyncStorage.setItem(CACHE_OWNER_KEY, me.user_id).catch(() => {});
+        if (gen !== generation.current) return;
+        setUserId(me.user_id);
+      } catch {
+        // Offline or transient: identity is re-fetched on the next foreground.
+      } finally {
+        identityInFlight.current = null;
+      }
+    })();
+    return identityInFlight.current;
   }, []);
 
   /** Renew if due (R10). A definitively failed renewal signs out; a deferred one never does. */

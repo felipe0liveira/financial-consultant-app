@@ -3,6 +3,7 @@ import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
+import { QueryProvider } from "../query/QueryProvider";
 import { ThemeProvider, useTheme } from "../theme/ThemeProvider";
 
 SplashScreen.preventAutoHideAsync();
@@ -40,9 +41,11 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <QueryProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </QueryProvider>
     </ThemeProvider>
   );
 }
