@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, RefreshControl, SectionList, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -15,6 +16,7 @@ import { MonthStepper } from "../../features/contas/MonthStepper";
 import { useGroups, useMonthTransactions, useSearchBills } from "../../hooks/data";
 import { useOnline } from "../../hooks/status";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { NetworkError } from "../../api/client";
 import { fonts } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { BillDetailsSheet } from "../../ui/bills/BillDetailsSheet";
@@ -35,7 +37,15 @@ export default function Contas() {
   const online = useOnline();
   const params = useLocalSearchParams<{ month?: string }>();
   const [month, setMonth] = useState(currentMonth());
-  useFocusEffect(useCallback(() => { if (params.month) setMonth(params.month); }, [params.month]));
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  // Consume the month param once so returning to the tab does not snap back.
+  useFocusEffect(useCallback(() => {
+    if (params.month) {
+      setMonth(params.month);
+      router.setParams({ month: undefined });
+    }
+  }, [params.month, router]));
 
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS);
@@ -66,6 +76,21 @@ export default function Contas() {
   );
   const hasData = !!monthQuery.data;
 
+  // Refetch stale data when the tab is shown again (spec F2); the first focus is covered by mount.
+  const refetchRef = useRef({ month, refetchMonth: monthQuery.refetch, refetchGroups: groupsQuery.refetch });
+  useEffect(() => {
+    refetchRef.current = { month, refetchMonth: monthQuery.refetch, refetchGroups: groupsQuery.refetch };
+  });
+  const firstFocus = useRef(true);
+  useFocusEffect(useCallback(() => {
+    if (firstFocus.current) { firstFocus.current = false; return; }
+    const cache = queryClient.getQueryCache();
+    const { month: m, refetchMonth, refetchGroups } = refetchRef.current;
+    if (cache.find({ queryKey: ["month-transactions", m], exact: true })?.isStale()) void refetchMonth();
+    if (cache.find({ queryKey: ["groups"], exact: true })?.isStale()) void refetchGroups();
+  }, [queryClient]));
+  const searchOffline = isSearching && !online;
+
   const emptyText = isSearching
     ? "Nenhuma conta encontrada para essa busca."
     : activeFilterCount(filters) > 0
@@ -79,13 +104,43 @@ export default function Contas() {
     void Promise.allSettled([monthQuery.refetch(), groupsQuery.refetch()]).then(() => setPulling(false));
   };
 
+  const skeletons = <View style={{ gap: 10 }}><Skeleton height={56} /><Skeleton height={56} /><Skeleton height={56} /></View>;
+  const retryButton = (onRetry: () => void) => <Button label="Tentar novamente" variant="secondary" onPress={onRetry} />;
+  let emptyComponent;
+  if (searchOffline) {
+    emptyComponent = <Text style={{ color: colors.warn }}>A busca precisa de conexão com a internet.</Text>;
+  } else if (isSearching) {
+    if (search.error) {
+      emptyComponent = <Text style={{ color: colors.danger }}>Não foi possível buscar: {search.error.message}</Text>;
+    } else if (!search.data) {
+      emptyComponent = skeletons;
+    } else {
+      emptyComponent = <Text style={{ color: colors.inkSoft, textAlign: "center", padding: 24 }}>{emptyText}</Text>;
+    }
+  } else if (!hasData && !online) {
+    emptyComponent = <OfflineEmpty onRetry={() => void monthQuery.refetch()} />;
+  } else if (!hasData && monthQuery.error) {
+    emptyComponent = monthQuery.error instanceof NetworkError
+      ? <OfflineEmpty onRetry={() => void monthQuery.refetch()} />
+      : (
+        <View style={{ gap: 12 }}>
+          <Text style={{ color: colors.danger }}>Não foi possível carregar as contas: {monthQuery.error.message}</Text>
+          {retryButton(() => void monthQuery.refetch())}
+        </View>
+      );
+  } else if (!hasData) {
+    emptyComponent = skeletons;
+  } else {
+    emptyComponent = <Text style={{ color: colors.inkSoft, textAlign: "center", padding: 24 }}>{emptyText}</Text>;
+  }
+
   const header = (
     <View style={{ gap: 12, paddingBottom: 8 }}>
       <Text accessibilityRole="header" style={{ fontFamily: fonts.display, fontSize: 28, color: colors.ink }}>Contas</Text>
       <MonthStepper month={month} onChange={changeMonth} />
-      <OfflineBanner />
-      <RefreshNotice isFetching={monthQuery.isFetching} hasData={hasData} />
-      {hasData ? <ContasKpis kpis={kpis} /> : null}
+      <OfflineBanner forceVisible={!!monthQuery.error && hasData} />
+      <RefreshNotice isFetching={monthQuery.isFetching && !monthQuery.isFetchingNextPage && !pulling} hasData={hasData} />
+      {hasData ? <ContasKpis kpis={kpis} month={month} /> : null}
       <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
         <TextInput
           value={query}
@@ -100,7 +155,6 @@ export default function Contas() {
         </Pressable>
       </View>
       <FilterChips filters={filters} onChange={setFilters} />
-      {isSearching && !online ? <Text style={{ color: colors.warn }}>A busca precisa de conexão com a internet.</Text> : null}
     </View>
   );
 
@@ -108,7 +162,7 @@ export default function Contas() {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.panel }}>
       <SectionList<BillViewModel, BillSection>
         contentContainerStyle={{ padding: 16 }}
-        sections={buckets.map<BillSection>((b) => ({ key: b.key, title: b.label, groupId: b.groupId, data: b.bills }))}
+        sections={searchOffline ? [] : buckets.map<BillSection>((b) => ({ key: b.key, title: b.label, groupId: b.groupId, data: b.bills }))}
         keyExtractor={(item, index) => `${item.selectionKey}:${index}`}
         ListHeaderComponent={header}
         renderSectionHeader={({ section }) =>
@@ -125,12 +179,7 @@ export default function Contas() {
             onPress={() => setSelected(item)}
           />
         )}
-        ListEmptyComponent={
-          !hasData && !online ? <OfflineEmpty onRetry={() => void monthQuery.refetch()} />
-            : !hasData ? <View style={{ gap: 10 }}><Skeleton height={56} /><Skeleton height={56} /><Skeleton height={56} /></View>
-            : monthQuery.error ? <Text style={{ color: colors.danger }}>Não foi possível carregar as contas: {monthQuery.error.message}</Text>
-            : <Text style={{ color: colors.inkSoft, textAlign: "center", padding: 24 }}>{emptyText}</Text>
-        }
+        ListEmptyComponent={emptyComponent}
         ListFooterComponent={
           !isSearching && monthQuery.hasNextPage ? (
             <Button label={monthQuery.isFetchingNextPage ? "Carregando…" : "Carregar mais"} variant="secondary" loading={monthQuery.isFetchingNextPage} onPress={() => void monthQuery.fetchNextPage()} />

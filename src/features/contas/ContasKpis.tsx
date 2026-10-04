@@ -9,7 +9,7 @@ import { FlipCard } from "../../ui/FlipCard";
 const CARD_WIDTH = 160;
 
 /** Contas KPI strip (spec C2): due today, receivable/received, payable/paid, free balance. */
-export function ContasKpis({ kpis }: { kpis: ContasKpisData }) {
+export function ContasKpis({ kpis, month }: { kpis: ContasKpisData; month: string }) {
   const { colors } = useTheme();
 
   const card: ViewStyle = { width: CARD_WIDTH, borderRadius: 16, padding: 14, gap: 4, backgroundColor: colors.card };
@@ -34,18 +34,21 @@ export function ContasKpis({ kpis }: { kpis: ContasKpisData }) {
         </View>
       ) : null}
       <FlipCard
+        key={`receber-${month}`}
         label="A receber e recebido"
         initialBack={kpis.aReceber === 0 && kpis.recebido > 0}
         front={face("A receber", kpis.aReceber, formatBRL)}
         back={face("Recebido", kpis.recebido, formatBRL)}
       />
       <FlipCard
+        key={`pagar-${month}`}
         label="A pagar e pago"
         initialBack={kpis.aPagar === 0 && kpis.pago > 0}
         front={face("A pagar", kpis.aPagar, formatBRL)}
         back={face("Pago", kpis.pago, formatBRL)}
       />
       <FlipCard
+        key={`saldo-${month}`}
         label="Saldo livre e percentual da entrada"
         front={face("Saldo livre", kpis.saldoLivre, formatBRL, kpis.saldoLivre >= 0 ? colors.ok : colors.danger)}
         back={face(
