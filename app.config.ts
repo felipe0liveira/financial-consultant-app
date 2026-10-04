@@ -22,6 +22,7 @@ const config: ExpoConfig = {
   ios: {
     icon: "./assets/expo.icon",
     bundleIdentifier: "com.felipeoliveira.financialconsultant",
+    deploymentTarget: "17.0",
     supportsTablet: false,
   },
   android: {
@@ -41,7 +42,9 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-secure-store",
     "expo-font",
-    ["expo-build-properties", { ios: { deploymentTarget: "17.0" } }],
+    // enableSceneSupport: the iOS 27 SDK (Xcode 27) requires the UIScene life cycle;
+    // SDK 57 opts in here. Remove once on Expo SDK 58+, which adopts it by default.
+    ["expo-build-properties", { ios: { enableSceneSupport: true } }],
     ["@react-native-google-signin/google-signin", { iosUrlScheme }],
     [
       "expo-splash-screen",
