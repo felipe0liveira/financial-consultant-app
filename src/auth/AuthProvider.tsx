@@ -5,7 +5,7 @@ import {
 } from "react";
 import { AppState } from "react-native";
 import { apiFetch, installAuthHooks, type RenewOutcome } from "../api/client";
-import { clearQueryCache } from "../query/client";
+import { clearQueryCache, resetForNewOwner } from "../query/client";
 import { exchangeIdToken } from "./exchange";
 import { freshIdTokenSilently, googleSignOut, signInInteractive } from "./google";
 import { needsRenewal, type StoredSession } from "./session";
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const me = await apiFetch<{ user_id: string }>("me");
         if (gen !== generation.current) return;
         const owner = await AsyncStorage.getItem(CACHE_OWNER_KEY).catch(() => null);
-        if (owner && owner !== me.user_id) await clearQueryCache().catch(() => {});
+        if (owner && owner !== me.user_id) await resetForNewOwner().catch(() => {});
         await AsyncStorage.setItem(CACHE_OWNER_KEY, me.user_id).catch(() => {});
         if (gen !== generation.current) return;
         setUserId(me.user_id);
@@ -177,7 +177,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // Foreground (R10) and reconnect (R12). All handlers are no-ops until a session exists.
   useEffect(() => {
     const app = AppState.addEventListener("change", (state) => {
-      if (state === "active") void renewIfDue().then(() => loadIdentity());
+      if (state === "active") void renewIfDue().then(() => { if (!userId) return loadIdentity(); });
     });
     const net = NetInfo.addEventListener((s) => {
       if (!s.isConnected) return;

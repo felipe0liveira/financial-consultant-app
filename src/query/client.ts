@@ -35,3 +35,12 @@ export async function clearQueryCache(): Promise<void> {
   queryClient.clear();
   await persister.removeClient();
 }
+
+/**
+ * Owner changed while screens are mounted: drops the persisted cache, then resets every query to
+ * its initial state, which refetches the active ones (spec A1).
+ */
+export async function resetForNewOwner(): Promise<void> {
+  await persister.removeClient();
+  await queryClient.resetQueries();
+}
