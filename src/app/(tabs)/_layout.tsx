@@ -1,6 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
+import { currentMonth } from "../../domain/bills";
+import { useBills } from "../../hooks/data";
 import { useTheme } from "../../theme/ThemeProvider";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -13,6 +15,8 @@ const icon = (name: IconName) => {
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { groups } = useBills(currentMonth());
+  const unpaid = (groups ?? []).filter((g) => g.status !== "paid").reduce((n, g) => n + g.bills.length, 0);
   return (
     <Tabs
       screenOptions={{
@@ -23,7 +27,15 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="painel" options={{ title: "Painel", tabBarIcon: icon("home-outline") }} />
-      <Tabs.Screen name="contas" options={{ title: "Contas", tabBarIcon: icon("receipt-outline") }} />
+      <Tabs.Screen
+        name="contas"
+        options={{
+          title: "Contas",
+          tabBarIcon: icon("receipt-outline"),
+          tabBarBadge: unpaid > 0 ? unpaid : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.danger },
+        }}
+      />
       <Tabs.Screen name="grupos" options={{ title: "Grupos", tabBarIcon: icon("albums-outline") }} />
       <Tabs.Screen name="recorrentes" options={{ title: "Recorrentes", tabBarIcon: icon("repeat-outline") }} />
       <Tabs.Screen name="mais" options={{ title: "Mais", tabBarIcon: icon("ellipsis-horizontal") }} />
