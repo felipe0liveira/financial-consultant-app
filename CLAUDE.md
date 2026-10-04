@@ -31,6 +31,12 @@ This repo is part of the workspace at `../` (siblings: `financial-consultant-api
     locally and return to the login screen.
   - **Never sign out while offline** — network failures keep the session and renewal retries on
     reconnect / foreground.
+- **Domain logic is ported from the web.** `src/domain/bills.ts` and `money.ts` are copies of
+  `financial-consultant-web/lib/*`; when the web changes a rule (status, buckets, filters, KPIs),
+  port the change here. The web is the reference — tests that disagree with it are wrong.
+- **Data layer:** TanStack Query with keys mirroring the web (`["month", m]`,
+  `["month-transactions", m]`, `["bills-search", f]`, `["groups"]`); 30 s stale time, cache
+  persisted on device for 24 h, cleared on sign-out and when a different user signs in.
 - **Never embed secrets.** No `WEB_API_SECRET`, no client secrets. Only public identifiers (the
   Google iOS client ID and its URL scheme) come from `.env` at config time.
 - Environments: `APP_ENV` (`development` default | `production`) is read by `app.config.ts`, which
@@ -42,10 +48,14 @@ This repo is part of the workspace at `../` (siblings: `financial-consultant-api
 ```
 src/app/      Expo Router routes (login, tabs, Mais stack)
 src/auth/     Google sign-in, session storage, renewal
-src/api/      BFF client (bearer, 401 handling)
+src/api/      BFF client (bearer, 401 handling), endpoints, response types
 src/config/   env + brand (provisional name)
 src/theme/    design tokens (light/dark/system)
-src/ui/       shared components
+src/ui/       shared components (bills, charts, feedback, motion)
+src/domain/   pure logic ported from the web (bills, money, format)
+src/query/    TanStack Query client + on-device persistence
+src/hooks/    data and status hooks
+src/features/ screen-specific components and derivations
 docs/         product/design docs (feature inventory, API, design system, phased plan)
 .sdd/         specs and plans (versioned)
 ```

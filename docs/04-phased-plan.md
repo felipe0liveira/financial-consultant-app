@@ -86,7 +86,7 @@ Android later). Decide before Phase 5.
 
 **Exit:** a web user signs in on the simulator and the app shows their `user_id`-scoped data shell.
 
-### Phase 2 — Read core: Painel & Contas
+### Phase 2 — Read core: Painel & Contas — ✅ delivered 2026-10-04
 - Dashboard: header, KPI cards (flip, count-up), "Gastos do mês" chart (3/6/9), "Contas a pagar".
 - Contas: month stepper, KPIs, status derivation, buckets, grouping, filters sheet, search, pagination.
 - Bill details sheet.
