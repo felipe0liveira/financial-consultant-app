@@ -190,7 +190,8 @@ web where the web has them.
 - Every requirement above is covered by an automated test (status derivation, KPIs, bucketing,
   formatting) or a documented manual check on the Simulator.
 
-## Open questions
+## Resolved questions
 
-- **"Por categoria" scope:** assume it uses **expenses of the current month** (as the web's right
-  rail does); confirm if income should be included.
+- **"Por categoria" scope (resolved 2026-10-04):** follow the web exactly — the web sums `|amount|`
+  of **all** the month's transactions per category (income included), top 6. The earlier
+  assumption that the web uses expenses only was wrong.
