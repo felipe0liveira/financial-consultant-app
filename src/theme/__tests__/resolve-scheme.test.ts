@@ -1,4 +1,4 @@
-import { resolveScheme } from "../tokens";
+import { palette, resolveScheme } from "../tokens";
 
 test("system follows the OS", () => {
   expect(resolveScheme("system", "dark")).toBe("dark");
@@ -9,4 +9,8 @@ test("system follows the OS", () => {
 test("explicit preference wins over the OS", () => {
   expect(resolveScheme("light", "dark")).toBe("light");
   expect(resolveScheme("dark", "light")).toBe("dark");
+});
+
+test("light and dark palettes expose the same tokens", () => {
+  expect(Object.keys(palette.dark).sort()).toEqual(Object.keys(palette.light).sort());
 });
