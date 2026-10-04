@@ -27,7 +27,7 @@
 |---|---|---|
 | D1 | Auth: **Option A — BFF as mobile gateway** | ✅ Decided 2026-10-04 |
 | D2 | Tech: **Expo / React Native + TypeScript** | ✅ Decided 2026-10-04 |
-| D3 | Minimum iOS version | Open |
+| D3 | Minimum iOS version: **iOS 17+** | ✅ Decided 2026-10-04 |
 | D4 | Push delivery (APNs vs FCM) | Open — before Phase 5 |
 
 ### D1 — How the iOS app authenticates — ✅ decided: Option A
@@ -54,9 +54,9 @@ mechanism (iOS can silently re-run Google Sign-In to mint a fresh token).
 | **Expo / React Native + TypeScript** *(chosen)* | Same language as the web; pure helpers (`lib/money.ts`, `lib/bills.ts` status derivation, category inference, TanStack Query patterns) can be ported almost verbatim; Android later is cheap. Native Google Sign-In and APNs available via well-maintained modules; builds on the Mac with Xcode. Renders native UIKit views — **no WebView**. Google Sign-In requires a development build (not Expo Go). |
 | SwiftUI (native) | Best platform feel and smallest runtime; all logic rewritten in Swift; Android would be a second app. |
 
-### D3 — Minimum iOS version
+### D3 — Minimum iOS version — ✅ decided: iOS 17+ (2026-10-04)
 
-Proposal: iOS 17+ (confirm against the Expo SDK's supported range during the Phase 0 spec).
+iOS 17+, inside the supported range of the current Expo SDK (which itself requires Xcode 26.4+ to build).
 
 ### D4 — Push delivery
 
@@ -68,7 +68,7 @@ Android later). Decide before Phase 5.
 ## Phases
 
 ### Phase 0 — Foundations & decisions
-- Close D3 (D1 and D2 are decided); write a `CLAUDE.md` for this repo.
+- ~~Close D3~~ (D1, D2 and D3 are decided); write a `CLAUDE.md` for this repo.
 - Create the **iOS OAuth client** in GCP project `financial-consultant-501119` (same project as
   the web client, so `sub` matches).
 - Specs + plans: `-web` mobile auth endpoint + bearer support; `-app` Expo scaffold + sign-in.
