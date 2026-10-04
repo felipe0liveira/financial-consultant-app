@@ -25,6 +25,7 @@ function RootNavigator() {
     <>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
+        <Stack.Screen name="index" />
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="login" />
         </Stack.Protected>
