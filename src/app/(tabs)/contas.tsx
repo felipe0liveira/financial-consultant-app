@@ -19,7 +19,7 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { NetworkError } from "../../api/client";
 import { fonts } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
-import { BillDetailsSheet } from "../../ui/bills/BillDetailsSheet";
+import { useOpenBillDetails } from "../../ui/bills/BillDetailsSheet";
 import { BillRow } from "../../ui/bills/BillRow";
 import { Button } from "../../ui/Button";
 import { OfflineBanner } from "../../ui/OfflineBanner";
@@ -54,7 +54,7 @@ export default function Contas() {
   const [grouping, setGrouping] = useState<BillGroupingMode>("status");
   useEffect(() => { void loadGrouping().then(setGrouping); }, []);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [selected, setSelected] = useState<BillViewModel | null>(null);
+  const openBill = useOpenBillDetails();
 
   const monthQuery = useMonthTransactions(month);
   const search = useSearchBills({ month, description: debounced }, isSearching && online);
@@ -176,7 +176,7 @@ export default function Contas() {
             groups={groups}
             hideGroupId={section.groupId}
             showPill={effectiveGrouping !== "status" ? ["overdue", "due-today"].includes(item.status) : true}
-            onPress={() => setSelected(item)}
+            onPress={() => openBill(item)}
           />
         )}
         ListEmptyComponent={emptyComponent}
@@ -198,7 +198,6 @@ export default function Contas() {
         onApply={(f, g) => { setFilters(f); setGrouping(g); void saveGrouping(g); setSheetOpen(false); }}
         onClose={() => setSheetOpen(false)}
       />
-      <BillDetailsSheet bill={selected} groups={groups} onClose={() => setSelected(null)} />
     </SafeAreaView>
   );
 }

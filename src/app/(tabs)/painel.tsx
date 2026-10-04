@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { NetworkError } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { firstName } from "../../auth/session";
-import { currentMonth, lastNMonths, type BillViewModel } from "../../domain/bills";
+import { currentMonth, lastNMonths } from "../../domain/bills";
 import { formatHeaderDate } from "../../domain/format";
 import { categoryTotals, derivePainelKpis, expenseSeries, upcomingBills } from "../../features/painel/derive";
 import { KpiCards } from "../../features/painel/KpiCards";
@@ -16,7 +16,7 @@ import { useOnline } from "../../hooks/status";
 import { useTheme } from "../../theme/ThemeProvider";
 import { fonts } from "../../theme/tokens";
 import { Button } from "../../ui/Button";
-import { BillDetailsSheet } from "../../ui/bills/BillDetailsSheet";
+import { useOpenBillDetails } from "../../ui/bills/BillDetailsSheet";
 import { OfflineBanner } from "../../ui/OfflineBanner";
 import { OfflineEmpty } from "../../ui/OfflineEmpty";
 import { RefreshNotice } from "../../ui/RefreshNotice";
@@ -29,7 +29,7 @@ export default function Painel() {
   const online = useOnline();
   const month = currentMonth();
   const [range, setRange] = useState(3);
-  const [selected, setSelected] = useState<BillViewModel | null>(null);
+  const openBill = useOpenBillDetails();
   const [pulling, setPulling] = useState(false);
   const bills = useBills(month);
   const months = useMemo(() => lastNMonths(range), [range]);
@@ -118,7 +118,7 @@ export default function Painel() {
               groups={groups.filter((g) => g.status !== "paid")}
               totalBills={kpis.totalBills}
               allGroups={allGroups}
-              onSelect={setSelected}
+              onSelect={openBill}
               onSeeAll={() => router.push({ pathname: "/contas", params: { month } })}
             />
             <UpcomingSection bills={upcomingBills(groups)} />
@@ -126,7 +126,6 @@ export default function Painel() {
           </>
         ) : null}
       </ScrollView>
-      <BillDetailsSheet bill={selected} groups={allGroups} onClose={() => setSelected(null)} />
     </SafeAreaView>
   );
 }

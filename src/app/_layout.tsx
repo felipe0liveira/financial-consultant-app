@@ -32,6 +32,15 @@ function RootNavigator() {
         </Stack.Protected>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="bill-details"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: "fitToContents",
+              sheetGrabberVisible: true,
+              contentStyle: { backgroundColor: colors.panel },
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </>
