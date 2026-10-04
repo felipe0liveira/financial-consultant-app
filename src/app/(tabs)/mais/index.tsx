@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useTheme } from "../../../theme/ThemeProvider";
 
@@ -11,23 +11,26 @@ const ITEMS = [
 
 export default function Mais() {
   const { colors } = useTheme();
+  const router = useRouter();
   return (
     <View style={{ padding: 16, gap: 8 }}>
       {ITEMS.map((item) => (
-        <Link key={item.href} href={item.href} asChild>
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel={item.label}
-            style={({ pressed }) => ({
-              flexDirection: "row", alignItems: "center", gap: 12, padding: 16,
-              borderRadius: 18, backgroundColor: pressed ? colors.hair : colors.card,
-            })}
-          >
-            <Ionicons name={item.icon} size={22} color={colors.inkSoft} />
-            <Text style={{ flex: 1, fontSize: 17, color: colors.ink }}>{item.label}</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
-          </Pressable>
-        </Link>
+        // A plain Pressable + router.push: wrapping it in <Link asChild> drops the
+        // function-form `style` Pressable needs for its pressed state.
+        <Pressable
+          key={item.href}
+          accessibilityRole="link"
+          accessibilityLabel={item.label}
+          onPress={() => router.push(item.href)}
+          style={({ pressed }) => ({
+            flexDirection: "row", alignItems: "center", gap: 12, padding: 16,
+            borderRadius: 18, backgroundColor: pressed ? colors.hair : colors.card,
+          })}
+        >
+          <Ionicons name={item.icon} size={22} color={colors.inkSoft} />
+          <Text style={{ flex: 1, fontSize: 17, color: colors.ink }}>{item.label}</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+        </Pressable>
       ))}
     </View>
   );
