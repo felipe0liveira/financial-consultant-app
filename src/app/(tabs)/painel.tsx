@@ -1,7 +1,9 @@
-import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { NetworkError } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { firstName } from "../../auth/session";
 import { currentMonth, lastNMonths, type BillViewModel } from "../../domain/bills";
@@ -9,10 +11,11 @@ import { formatHeaderDate } from "../../domain/format";
 import { categoryTotals, derivePainelKpis, expenseSeries, upcomingBills } from "../../features/painel/derive";
 import { KpiCards } from "../../features/painel/KpiCards";
 import { CategorySection, ChartSection, UnpaidSection, UpcomingSection } from "../../features/painel/Sections";
-import { useBills, useMonthHistory } from "../../hooks/data";
+import { useBills, useGroups, useMonthHistory } from "../../hooks/data";
 import { useOnline } from "../../hooks/status";
 import { useTheme } from "../../theme/ThemeProvider";
 import { fonts } from "../../theme/tokens";
+import { Button } from "../../ui/Button";
 import { BillDetailsSheet } from "../../ui/bills/BillDetailsSheet";
 import { OfflineBanner } from "../../ui/OfflineBanner";
 import { OfflineEmpty } from "../../ui/OfflineEmpty";
@@ -34,6 +37,24 @@ export default function Painel() {
   const groups = bills.groups ?? [];
   const kpis = derivePainelKpis(groups, bills.data);
   const hasData = !!bills.data;
+  const groupsQuery = useGroups();
+  const allGroups = groupsQuery.data?.items ?? [];
+  const queryClient = useQueryClient();
+  const firstFocus = useRef(true);
+
+  // Refetch on tab focus, but only stale queries and never on the very first focus (mount fetch covers it).
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      const cache = queryClient.getQueryCache();
+      for (const m of new Set([month, ...months])) {
+        if (cache.find({ queryKey: ["month", m] })?.isStale()) void queryClient.refetchQueries({ queryKey: ["month", m] });
+      }
+    }, [queryClient, month, months]),
+  );
 
   const refresh = async () => {
     setPulling(true);
@@ -50,7 +71,7 @@ export default function Painel() {
         Olá, {session ? firstName(session.profile) : ""}
       </Text>
       <Text style={{ color: colors.inkSoft }}>
-        {formatHeaderDate(new Date())} · você tem {kpis.totalBills} contas este mês
+        {formatHeaderDate(new Date())} · você tem {kpis.totalBills} {kpis.totalBills === 1 ? "conta" : "contas"} este mês
       </Text>
     </View>
   );
@@ -62,9 +83,9 @@ export default function Painel() {
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void refresh()} />}
       >
         {header}
-        <OfflineBanner />
+        <OfflineBanner forceVisible={!!bills.error && hasData} />
         <RefreshNotice isFetching={bills.isFetching && !pulling} hasData={hasData} />
-        {!hasData && !online ? <OfflineEmpty onRetry={() => void bills.refetch()} /> : null}
+        {!hasData && !online && !bills.error ? <OfflineEmpty onRetry={() => void bills.refetch()} /> : null}
         {!hasData && online && !bills.error ? (
           <View style={{ gap: 12 }}>
             <Skeleton height={120} />
@@ -74,7 +95,14 @@ export default function Painel() {
           </View>
         ) : null}
         {bills.error && !hasData && online ? (
-          <Text style={{ color: colors.danger }}>Não foi possível carregar os dados do mês: {bills.error.message}</Text>
+          bills.error instanceof NetworkError ? (
+            <OfflineEmpty onRetry={() => void bills.refetch()} />
+          ) : (
+            <View style={{ gap: 12 }}>
+              <Text style={{ color: colors.danger }}>Não foi possível carregar os dados do mês: {bills.error.message}</Text>
+              <Button label="Tentar novamente" variant="secondary" onPress={() => void bills.refetch()} />
+            </View>
+          )
         ) : null}
         {hasData ? (
           <>
@@ -89,6 +117,7 @@ export default function Painel() {
             <UnpaidSection
               groups={groups.filter((g) => g.status !== "paid")}
               totalBills={kpis.totalBills}
+              allGroups={allGroups}
               onSelect={setSelected}
               onSeeAll={() => router.push({ pathname: "/contas", params: { month } })}
             />
@@ -97,7 +126,7 @@ export default function Painel() {
           </>
         ) : null}
       </ScrollView>
-      <BillDetailsSheet bill={selected} onClose={() => setSelected(null)} />
+      <BillDetailsSheet bill={selected} groups={allGroups} onClose={() => setSelected(null)} />
     </SafeAreaView>
   );
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, { FadeInUp, useReducedMotion } from "react-native-reanimated";
+import type { TransactionGroup } from "../../api/types";
 import { BILL_GROUP_LABELS, categoryColors, type BillGroup, type BillViewModel } from "../../domain/bills";
 import { formatBRL, formatMonthShort } from "../../domain/format";
 import { fonts, radii } from "../../theme/tokens";
@@ -69,8 +70,8 @@ export function ChartSection({ months, values, loading, range, onRangeChange }: 
   );
 }
 
-export function UnpaidSection({ groups, totalBills, onSelect, onSeeAll }: {
-  groups: BillGroup[]; totalBills: number; onSelect: (b: BillViewModel) => void; onSeeAll: () => void;
+export function UnpaidSection({ groups, allGroups = [], totalBills, onSelect, onSeeAll }: {
+  groups: BillGroup[]; allGroups?: TransactionGroup[]; totalBills: number; onSelect: (b: BillViewModel) => void; onSeeAll: () => void;
 }) {
   const { colors } = useTheme();
   const nonEmpty = groups.filter((g) => g.bills.length > 0);
@@ -94,7 +95,7 @@ export function UnpaidSection({ groups, totalBills, onSelect, onSeeAll }: {
               {`${BILL_GROUP_LABELS[g.status]} · ${g.bills.length}`}
             </Text>
             {g.bills.map((b) => (
-              <BillRow key={b.selectionKey} bill={b} showPill={false} onPress={() => onSelect(b)} />
+              <BillRow key={b.selectionKey} bill={b} groups={allGroups} showPill={false} onPress={() => onSelect(b)} />
             ))}
           </View>
         ))
