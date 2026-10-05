@@ -20,6 +20,7 @@ import { NetworkError } from "../../api/client";
 import { fonts } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useOpenBillDetails } from "../../ui/bills/BillDetailsSheet";
+import { NewBillButton } from "../../ui/bills/NewBillButton";
 import { SwipeableBillRow } from "../../ui/bills/SwipeableBillRow";
 import { Button } from "../../ui/Button";
 import { OfflineBanner } from "../../ui/OfflineBanner";
@@ -136,7 +137,10 @@ export default function Contas() {
 
   const header = (
     <View style={{ gap: 12, paddingBottom: 8 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: fonts.display, fontSize: 28, color: colors.ink }}>Contas</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <Text accessibilityRole="header" style={{ fontFamily: fonts.display, fontSize: 28, color: colors.ink }}>Contas</Text>
+        <NewBillButton month={month} />
+      </View>
       <MonthStepper month={month} onChange={changeMonth} />
       <OfflineBanner forceVisible={!!monthQuery.error && hasData} />
       <RefreshNotice isFetching={monthQuery.isFetching && !monthQuery.isFetchingNextPage && !pulling} hasData={hasData} />

@@ -17,6 +17,7 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { fonts } from "../../theme/tokens";
 import { Button } from "../../ui/Button";
 import { useOpenBillDetails } from "../../ui/bills/BillDetailsSheet";
+import { NewBillButton } from "../../ui/bills/NewBillButton";
 import { OfflineBanner } from "../../ui/OfflineBanner";
 import { OfflineEmpty } from "../../ui/OfflineEmpty";
 import { RefreshNotice } from "../../ui/RefreshNotice";
@@ -67,9 +68,12 @@ export default function Painel() {
 
   const header = (
     <View style={{ gap: 4 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: fonts.display, fontSize: 28, color: colors.ink }}>
-        Olá, {session ? firstName(session.profile) : ""}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <Text accessibilityRole="header" style={{ flex: 1, fontFamily: fonts.display, fontSize: 28, color: colors.ink }}>
+          Olá, {session ? firstName(session.profile) : ""}
+        </Text>
+        <NewBillButton month={month} />
+      </View>
       <Text style={{ color: colors.inkSoft }}>
         {formatHeaderDate(new Date())} · você tem {kpis.totalBills} {kpis.totalBills === 1 ? "conta" : "contas"} este mês
       </Text>
