@@ -1,10 +1,12 @@
 import { Bitter_400Regular, Bitter_600SemiBold, Bitter_700Bold, useFonts } from "@expo-google-fonts/bitter";
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import { QueryProvider } from "../query/QueryProvider";
 import { ThemeProvider, useTheme } from "../theme/ThemeProvider";
+import { ToastProvider } from "../ui/toast/ToastProvider";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -49,12 +51,16 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <QueryProvider>
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
-      </QueryProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <RootNavigator />
+            </ToastProvider>
+          </AuthProvider>
+        </QueryProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
