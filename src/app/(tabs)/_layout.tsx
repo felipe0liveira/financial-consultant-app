@@ -21,14 +21,6 @@ export default function TabsLayout() {
         {/* Rendered only when there is something unpaid: `hidden` still shows "0" on iOS. */}
         {unpaid > 0 ? <NativeTabs.Trigger.Badge>{String(unpaid)}</NativeTabs.Trigger.Badge> : null}
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="grupos">
-        <NativeTabs.Trigger.Icon sf="square.stack" />
-        <NativeTabs.Trigger.Label>Grupos</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="recorrentes">
-        <NativeTabs.Trigger.Icon sf="repeat" />
-        <NativeTabs.Trigger.Label>Recorrentes</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="mais">
         <NativeTabs.Trigger.Icon sf="ellipsis" />
         <NativeTabs.Trigger.Label>Mais</NativeTabs.Trigger.Label>
