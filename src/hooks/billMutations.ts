@@ -61,6 +61,7 @@ export function useSetBillConfirmed(): (tx: Transaction, month: string) => boole
         onMutate: (v) => snapshotAndPatch(qc, v.month, (txs) => withConfirmed(txs, billMatch(v.tx, v.month), v.confirmed)),
         onError: (err, v, snap) => {
           restore(qc, v.month, snap);
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           toast({ message: actionErrorMessage(v.action, classifyActionError(err)), tone: "error" });
         },
         onSettled: (_d, _e, v) => settle(qc, v.month),
@@ -83,16 +84,30 @@ export function useSetBillConfirmed(): (tx: Transaction, month: string) => boole
   );
 }
 
+/**
+ * Returns a guard that is true when online; otherwise toasts the offline message and returns false.
+ * Callers use it BEFORE opening a delete confirmation (spec Q14).
+ */
+export function useRequireOnline(): () => boolean {
+  const toast = useToast();
+  return useCallback((): boolean => {
+    if (onlineManager.isOnline()) return true;
+    toast({ message: OFFLINE_MESSAGE, tone: "error" });
+    return false;
+  }, [toast]);
+}
+
 /** Delete one bill or a whole installment series (spec Q7–Q11, Q13, Q14). Confirmation happens in the caller. */
-export function useDeleteBill(): (tx: Transaction, month: string, seriesId: string | null) => void {
+/** Returns true when the delete started (false when blocked offline). */
+export function useDeleteBill(): (tx: Transaction, month: string, seriesId: string | null) => boolean {
   const qc = useQueryClient();
   const toast = useToast();
 
   return useCallback(
-    (tx: Transaction, month: string, seriesId: string | null) => {
+    (tx: Transaction, month: string, seriesId: string | null): boolean => {
       if (!onlineManager.isOnline()) {
         toast({ message: OFFLINE_MESSAGE, tone: "error" });
-        return;
+        return false;
       }
       const options: MutationOptions<unknown, unknown, DeleteVars, Snapshot> = {
         mutationFn: (v) => (v.seriesId ? deleteInstallmentSeries(v.seriesId) : deleteTransaction(billMatch(v.tx, v.month))),
@@ -100,15 +115,21 @@ export function useDeleteBill(): (tx: Transaction, month: string, seriesId: stri
           snapshotAndPatch(qc, v.month, (txs) => (v.seriesId ? withoutSeries(txs, v.seriesId) : withoutBill(txs, billMatch(v.tx, v.month)))),
         onError: (err, v, snap) => {
           restore(qc, v.month, snap);
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           toast({ message: actionErrorMessage(v.seriesId ? "deleteSeries" : "delete", classifyActionError(err)), tone: "error" });
         },
         onSettled: (_d, _e, v) => {
           settle(qc, v.month);
-          if (v.seriesId) void qc.invalidateQueries({ queryKey: ["month"] }); // a series spans months
+          if (v.seriesId) {
+            // a series spans months
+            void qc.invalidateQueries({ queryKey: ["month"] });
+            void qc.invalidateQueries({ queryKey: ["month-transactions"] });
+          }
         },
       };
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       runScoped(qc, billKey(tx, month), options, { tx, month, seriesId });
+      return true;
     },
     [qc, toast]
   );
