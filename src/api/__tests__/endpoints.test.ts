@@ -1,8 +1,11 @@
 jest.mock("../client", () => ({ apiFetch: jest.fn().mockResolvedValue({}) }));
 import { apiFetch } from "../client";
 import {
+  addCategory,
+  createTransaction,
   deleteInstallmentSeries,
   deleteTransaction,
+  getCategories,
   getGroups,
   getMonth,
   getMonthTransactions,
@@ -37,4 +40,15 @@ test("write routes and bodies", async () => {
   expect(c[0]).toEqual(["transactions", { method: "PATCH", body: JSON.stringify({ ...m, confirmed: true }) }]);
   expect(c[1]).toEqual(["transactions", { method: "DELETE", body: JSON.stringify(m) }]);
   expect(c[2]).toEqual(["installments/s%201", { method: "DELETE" }]);
+});
+
+test("create and category routes", async () => {
+  const input = { month: "2026-10", day: 1, category: "Contas", description: "Luz", amount: 10, direction: "out" as const, recurring: false };
+  await createTransaction(input);
+  await getCategories();
+  await addCategory("Pets");
+  const c = (apiFetch as jest.Mock).mock.calls;
+  expect(c[0]).toEqual(["transactions", { method: "POST", body: JSON.stringify(input) }]);
+  expect(c[1]).toEqual(["categories"]);
+  expect(c[2]).toEqual(["categories", { method: "POST", body: JSON.stringify({ name: "Pets" }) }]);
 });

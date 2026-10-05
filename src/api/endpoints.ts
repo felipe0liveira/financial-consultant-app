@@ -2,6 +2,8 @@ import { apiFetch } from "./client";
 import { searchTransactionsQuery, type SearchTransactionsFilters } from "./search-query";
 import type { BillMatch } from "../domain/billActions";
 import type {
+  AddCategoryResult,
+  CreateBillInput,
   GroupsResponse,
   MonthSummary,
   MonthTransactionsPage,
@@ -39,4 +41,19 @@ export function deleteTransaction(match: BillMatch): Promise<unknown> {
 /** DELETE /installments/{id} — delete a whole installment series. */
 export function deleteInstallmentSeries(seriesId: string): Promise<unknown> {
   return apiFetch(`installments/${encodeURIComponent(seriesId)}`, { method: "DELETE" });
+}
+
+/** POST /transactions — create a bill, income, recurring rule or installment series. */
+export function createTransaction(input: CreateBillInput): Promise<unknown> {
+  return apiFetch("transactions", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** GET /categories — the household's saved catalog (bare string[]). */
+export function getCategories(): Promise<string[]> {
+  return apiFetch<string[]>("categories");
+}
+
+/** POST /categories — add a category (idempotent upstream). */
+export function addCategory(name: string): Promise<AddCategoryResult> {
+  return apiFetch<AddCategoryResult>("categories", { method: "POST", body: JSON.stringify({ name }) });
 }
