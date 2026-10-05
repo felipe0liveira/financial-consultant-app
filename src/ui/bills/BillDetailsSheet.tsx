@@ -1,21 +1,26 @@
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { TransactionGroup } from "../../api/types";
-import { billStatusSentence, type BillViewModel } from "../../domain/bills";
+import { billStatusSentence, currentMonth, type BillViewModel } from "../../domain/bills";
+import { deleteConfirmCopy, paySideAction } from "../../domain/billActions";
 import { formatBRL } from "../../domain/format";
+import { useDeleteBill, useSetBillConfirmed } from "../../hooks/billMutations";
 import { fonts } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
+import { Button } from "../Button";
+import { PAY_LABELS } from "./swipe";
 
 /** Route of the native form sheet that shows a bill (see src/app/bill-details.tsx). */
 export const BILL_DETAILS_ROUTE = "/bill-details";
 
 /** Opens the bill details sheet; the bill travels as a route param (it is small and already loaded). */
-export function useOpenBillDetails(): (bill: BillViewModel) => void {
+export function useOpenBillDetails(): (bill: BillViewModel, month: string) => void {
   const router = useRouter();
   return useCallback(
-    (bill: BillViewModel) => router.push({ pathname: BILL_DETAILS_ROUTE, params: { bill: JSON.stringify(bill) } }),
+    (bill: BillViewModel, month: string) =>
+      router.push({ pathname: BILL_DETAILS_ROUTE, params: { bill: JSON.stringify(bill), month } }),
     [router]
   );
 }
@@ -30,11 +35,46 @@ function Tag({ label }: { label: string }) {
 }
 
 /**
- * Read-only bill details (spec D1, D2). Rendered inside a native form sheet sized to its
+ * Bill details with pay/undo and delete actions (spec D1, D2). Rendered inside a native form sheet sized to its
  * content, so it must not use flex: 1 or a ScrollView — the sheet measures this view.
  */
-export function BillDetailsContent({ bill, groups = [], onClose }: { bill: BillViewModel; groups?: TransactionGroup[]; onClose: () => void }) {
+export function BillDetailsContent({
+  bill,
+  month,
+  groups = [],
+  onClose,
+  onConfirmedChange,
+}: {
+  bill: BillViewModel;
+  month: string;
+  groups?: TransactionGroup[];
+  onClose: () => void;
+  onConfirmedChange: (confirmed: boolean) => void;
+}) {
   const { colors } = useTheme();
+  const setConfirmed = useSetBillConfirmed();
+  const deleteBill = useDeleteBill();
+  const side = paySideAction(bill);
+
+  const onPay = () => {
+    setConfirmed(bill, month);
+    onConfirmedChange(!bill.confirmed);
+  };
+  const onDelete = () => {
+    const copy = deleteConfirmCopy(bill, month, currentMonth());
+    Alert.alert(copy.title, copy.message, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: () => {
+          deleteBill(bill, month, copy.seriesId);
+          onClose();
+        },
+      },
+    ]);
+  };
+
   const insets = useSafeAreaInsets();
   const tags = [
     bill.category,
@@ -67,6 +107,10 @@ export function BillDetailsContent({ bill, groups = [], onClose }: { bill: BillV
           <Text style={{ color: colors.inkSoft }}>{bill.comment}</Text>
         </View>
       ) : null}
+      <View style={{ gap: 10, marginTop: 8 }}>
+        <Button label={PAY_LABELS[side]} variant={side === "unpay" ? "secondary" : "primary"} onPress={onPay} />
+        <Button label="Excluir" variant="danger" onPress={onDelete} />
+      </View>
     </View>
   );
 }
