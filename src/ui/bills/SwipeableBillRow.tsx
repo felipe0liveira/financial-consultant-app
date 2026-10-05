@@ -8,6 +8,7 @@ import { deleteConfirmCopy, paySideAction } from "../../domain/billActions";
 import { useDeleteBill, useRequireOnline, useSetBillConfirmed } from "../../hooks/billMutations";
 import { useTheme } from "../../theme/ThemeProvider";
 import { BillRow } from "./BillRow";
+import { claimOpenSwipe, releaseOpenSwipe } from "./openSwipe";
 import { isFullSwipe, PAY_LABELS } from "./swipe";
 
 /** Ignore a row press this soon after a swipe gesture started. */
@@ -120,10 +121,10 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
             <ActionPanel translation={translation} edge="right" label="Excluir" bg={colors.danger} onPress={askDelete} />
           </>
         )}
-        onSwipeableOpenStartDrag={() => { lastDragAt.current = Date.now(); }}
+        onSwipeableOpenStartDrag={() => { lastDragAt.current = Date.now(); claimOpenSwipe(ref.current); }}
         onSwipeableCloseStartDrag={() => { lastDragAt.current = Date.now(); }}
-        onSwipeableOpen={() => { isOpen.current = true; }}
-        onSwipeableClose={() => { isOpen.current = false; }}
+        onSwipeableOpen={() => { isOpen.current = true; claimOpenSwipe(ref.current); }}
+        onSwipeableClose={() => { isOpen.current = false; releaseOpenSwipe(ref.current); }}
         onSwipeableWillOpen={(direction) => {
           if (!isFullSwipe(lastX.current, width)) return;
           if (direction === SwipeDirection.RIGHT) pay(); else askDelete();
