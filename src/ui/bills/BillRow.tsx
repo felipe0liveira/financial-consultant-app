@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { TransactionGroup } from "../../api/types";
 import type { BillViewModel } from "../../domain/bills";
@@ -6,8 +7,10 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { CategoryIcon } from "./CategoryIcon";
 import { StatusPill } from "./StatusPill";
 
-export function BillRow({ bill, groups = [], hideGroupId = null, showPill, onPress }: {
+export function BillRow({ bill, groups = [], hideGroupId = null, showPill, onPress, accessibilityActions, onAccessibilityAction }: {
   bill: BillViewModel; groups?: TransactionGroup[]; hideGroupId?: string | null; showPill: boolean; onPress: () => void;
+  accessibilityActions?: ComponentProps<typeof Pressable>["accessibilityActions"];
+  onAccessibilityAction?: ComponentProps<typeof Pressable>["onAccessibilityAction"];
 }) {
   const { colors } = useTheme();
   const chips = groups.filter((g) => bill.group_ids.includes(g.group_id) && g.group_id !== hideGroupId);
@@ -16,6 +19,8 @@ export function BillRow({ bill, groups = [], hideGroupId = null, showPill, onPre
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${bill.description}, ${formatBRL(Math.abs(bill.amount))}`}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={onAccessibilityAction}
       onPress={onPress}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, opacity: pressed ? 0.7 : 1 })}
     >

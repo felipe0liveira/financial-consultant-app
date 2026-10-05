@@ -5,7 +5,7 @@ import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { currentMonth } from "../../domain/bills";
 import { deleteConfirmCopy, paySideAction } from "../../domain/billActions";
-import { useDeleteBill, useSetBillConfirmed } from "../../hooks/billMutations";
+import { useDeleteBill, useRequireOnline, useSetBillConfirmed } from "../../hooks/billMutations";
 import { useTheme } from "../../theme/ThemeProvider";
 import { BillRow } from "./BillRow";
 import { isFullSwipe, PAY_LABELS } from "./swipe";
@@ -29,6 +29,7 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
   const { bill } = rowProps;
   const setConfirmed = useSetBillConfirmed();
   const deleteBill = useDeleteBill();
+  const requireOnline = useRequireOnline();
   const ref = useRef<SwipeableMethods>(null);
   const lastX = useRef(0);
   const [width, setWidth] = useState(0);
@@ -38,6 +39,7 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
   const pay = () => { ref.current?.close(); setConfirmed(bill, month); };
   const askDelete = () => {
     ref.current?.close();
+    if (!requireOnline()) return;
     const copy = deleteConfirmCopy(bill, month, currentMonth());
     Alert.alert(copy.title, copy.message, [
       { text: "Cancelar", style: "cancel" },
@@ -66,12 +68,10 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
     <View
       onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
       accessible={false}
-      accessibilityActions={[{ name: "pay", label: PAY_LABELS[side] }, { name: "delete", label: "Excluir" }]}
-      onAccessibilityAction={(e) => (e.nativeEvent.actionName === "pay" ? pay() : askDelete())}
     >
       <ReanimatedSwipeable
         ref={ref}
-        friction={1.5}
+        friction={1}
         overshootLeft
         overshootRight
         leftThreshold={ACTION_WIDTH / 2}
@@ -95,7 +95,11 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
         }}
       >
         <View style={{ backgroundColor: colors.panel }}>
-          <BillRow {...rowProps} />
+          <BillRow
+            {...rowProps}
+            accessibilityActions={[{ name: "pay", label: PAY_LABELS[side] }, { name: "delete", label: "Excluir" }]}
+            onAccessibilityAction={(e) => (e.nativeEvent.actionName === "pay" ? pay() : askDelete())}
+          />
         </View>
       </ReanimatedSwipeable>
     </View>
