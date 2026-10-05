@@ -45,15 +45,16 @@ interface ConfirmVars { tx: Transaction; month: string; confirmed: boolean; acti
 interface DeleteVars { tx: Transaction; month: string; seriesId: string | null }
 
 /** Pay / receive / undo with optimistic updates, rollback and the Desfazer toast (spec Q1–Q6, Q13, Q14). */
-export function useSetBillConfirmed(): (tx: Transaction, month: string) => void {
+/** Returns true when the action started (false when blocked offline). */
+export function useSetBillConfirmed(): (tx: Transaction, month: string) => boolean {
   const qc = useQueryClient();
   const toast = useToast();
 
   return useCallback(
-    (tx: Transaction, month: string) => {
+    (tx: Transaction, month: string): boolean => {
       if (!onlineManager.isOnline()) {
         toast({ message: OFFLINE_MESSAGE, tone: "error" });
-        return;
+        return false;
       }
       const options: MutationOptions<unknown, unknown, ConfirmVars, Snapshot> = {
         mutationFn: (v) => setTransactionConfirmed(billMatch(v.tx, v.month), v.confirmed),
@@ -76,6 +77,7 @@ export function useSetBillConfirmed(): (tx: Transaction, month: string) => void 
           onAction: () => runScoped(qc, key, options, { tx: { ...tx, confirmed: true }, month, confirmed: false, action: "unpay" }),
         });
       }
+      return true;
     },
     [qc, toast]
   );

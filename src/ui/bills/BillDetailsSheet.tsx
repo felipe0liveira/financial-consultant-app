@@ -57,8 +57,7 @@ export function BillDetailsContent({
   const side = paySideAction(bill);
 
   const onPay = () => {
-    setConfirmed(bill, month);
-    onConfirmedChange(!bill.confirmed);
+    if (setConfirmed(bill, month)) onConfirmedChange(!bill.confirmed);
   };
   const onDelete = () => {
     const copy = deleteConfirmCopy(bill, month, currentMonth());
