@@ -4,7 +4,7 @@ import { onlineManager } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BillDirection } from "../../api/types";
@@ -51,6 +51,8 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  // Synchronous guard: two taps before the re-render must not send two POSTs (spec 15).
+  const savingRef = useRef(false);
 
   const set = (patch: Partial<FormState>) => setForm((f) => updateNewBillForm(f, patch, currentMonth()));
   const installment = parseInstallment(form.description);
@@ -74,11 +76,12 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
   }, [done, onClose, toast]);
 
   const save = async () => {
-    if (saving) return;
+    if (savingRef.current) return;
     const invalid = validateNewBill(form);
     if (invalid) { setError(invalid); return; }
     if (!onlineManager.isOnline()) { setError(OFFLINE_MESSAGE); return; }
     setError(null);
+    savingRef.current = true;
     setSaving(true);
     const input = buildCreateBillInput(form, currentMonth());
     try {
@@ -88,6 +91,7 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
     } catch (e) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setError(createBillErrorMessage(e));
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -96,7 +100,7 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
     const name = raw.trim();
     if (!name) return;
     const existing = findCategory(options, name);
-    if (existing) { set({ category: existing }); return; }
+    if (existing) { setError(null); set({ category: existing }); return; }
     if (!onlineManager.isOnline()) { setError(OFFLINE_MESSAGE); return; }
     try {
       const res = await addCategory.mutateAsync(name);
@@ -140,6 +144,12 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
           <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700", opacity: saving ? 0.6 : 1 }}>{saving ? "Salvando…" : "Salvar"}</Text>
         </Pressable>
       </View>
+      {/* Pinned under the top bar so it is never below the fold or behind the keyboard. */}
+      {error ? (
+        <Text accessibilityRole="alert" style={{ marginHorizontal: 20, marginBottom: 12, color: colors.danger, backgroundColor: colors.dangerBg, borderRadius: 10, padding: 12, overflow: "hidden" }}>
+          {error}
+        </Text>
+      ) : null}
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 24) + 24, gap: 18 }}
         automaticallyAdjustKeyboardInsets
@@ -245,11 +255,6 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
             </View>
           ) : null}
 
-          {error ? (
-            <Text accessibilityRole="alert" style={{ color: colors.danger, backgroundColor: colors.dangerBg, borderRadius: 10, padding: 12, overflow: "hidden" }}>
-              {error}
-            </Text>
-          ) : null}
         </View>
       </ScrollView>
     </View>
