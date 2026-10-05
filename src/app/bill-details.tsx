@@ -1,8 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Transaction } from "../api/types";
 import { toBillViewModels } from "../domain/bills";
-import { useGroups } from "../hooks/data";
+import { useGroups, useMonth, useMonthTransactions } from "../hooks/data";
 import { BillDetailsContent } from "../ui/bills/BillDetailsSheet";
 
 function parseTransaction(raw?: string): Transaction | null {
@@ -19,12 +19,20 @@ export default function BillDetails() {
   const params = useLocalSearchParams<{ bill?: string; month?: string }>();
   const month = params.month ?? "";
   const groups = useGroups().data?.items ?? [];
-  // Local copy so the sheet re-derives in place after pay/undo.
-  const [tx, setTx] = useState<Transaction | null>(() => parseTransaction(params.bill));
-  const bill = useMemo(
-    () => (tx && month ? toBillViewModels([tx], month, new Date())[0] ?? null : null),
-    [tx, month]
-  );
+  const param = useMemo(() => parseTransaction(params.bill), [params.bill]);
+
+  // Same queries the screens use (already cached): the sheet follows optimistic patches, rollbacks and undo.
+  const summary = useMonth(month).data;
+  const listed = useMonthTransactions(month).transactions;
+
+  const bill = useMemo(() => {
+    if (!param || !month) return null;
+    const isSame = (t: Transaction) =>
+      t.description === param.description && t.day === param.day && t.amount === param.amount;
+    const live =
+      listed.find(isSame) ?? (summary?.transactions ?? []).find(isSame);
+    return toBillViewModels([live ?? param], month, new Date())[0] ?? null;
+  }, [param, month, summary, listed]);
 
   if (!bill) return null;
   return (
@@ -33,7 +41,6 @@ export default function BillDetails() {
       month={month}
       groups={groups}
       onClose={() => router.back()}
-      onConfirmedChange={(confirmed) => setTx((t) => (t ? { ...t, confirmed } : t))}
     />
   );
 }

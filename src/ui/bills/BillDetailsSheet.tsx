@@ -6,7 +6,7 @@ import type { TransactionGroup } from "../../api/types";
 import { billStatusSentence, currentMonth, type BillViewModel } from "../../domain/bills";
 import { deleteConfirmCopy, paySideAction } from "../../domain/billActions";
 import { formatBRL } from "../../domain/format";
-import { useDeleteBill, useSetBillConfirmed } from "../../hooks/billMutations";
+import { useDeleteBill, useRequireOnline, useSetBillConfirmed } from "../../hooks/billMutations";
 import { fonts } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { Button } from "../Button";
@@ -43,23 +43,23 @@ export function BillDetailsContent({
   month,
   groups = [],
   onClose,
-  onConfirmedChange,
 }: {
   bill: BillViewModel;
   month: string;
   groups?: TransactionGroup[];
   onClose: () => void;
-  onConfirmedChange: (confirmed: boolean) => void;
 }) {
   const { colors } = useTheme();
   const setConfirmed = useSetBillConfirmed();
   const deleteBill = useDeleteBill();
+  const requireOnline = useRequireOnline();
   const side = paySideAction(bill);
 
   const onPay = () => {
-    if (setConfirmed(bill, month)) onConfirmedChange(!bill.confirmed);
+    setConfirmed(bill, month);
   };
   const onDelete = () => {
+    if (!requireOnline()) return;
     const copy = deleteConfirmCopy(bill, month, currentMonth());
     Alert.alert(copy.title, copy.message, [
       { text: "Cancelar", style: "cancel" },
@@ -67,8 +67,7 @@ export function BillDetailsContent({
         text: "Excluir",
         style: "destructive",
         onPress: () => {
-          deleteBill(bill, month, copy.seriesId);
-          onClose();
+          if (deleteBill(bill, month, copy.seriesId)) onClose();
         },
       },
     ]);
