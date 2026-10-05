@@ -81,6 +81,8 @@ Android later). Decide before Phase 5.
 - App scaffold, environments (local BFF, production), design tokens, Bitter font, light/dark/system.
 - **Login screen as home** ("Entrar com Google"); session stored in the **Keychain**.
 - Navigation shell (tab bar: Painel, Contas, Grupos, Recorrentes, Mais → Categorias, Relatórios, Ajustes).
+  *Revised 2026-10-05:* the tab bar is now **Painel · Contas · Mais** (native Liquid Glass tabs);
+  Grupos and Recorrentes move inside Contas — the entry point is decided in Phase 4.
 - Settings: profile (name/email/avatar from Google claims, initials fallback), appearance, **Sair**.
 - `GET /me`, 401 handling ("Sua sessão expirou…" → back to login), cache-owner guard.
 
@@ -105,6 +107,7 @@ Android later). Decide before Phase 5.
 **Exit:** every bill action available on the web works on iOS.
 
 ### Phase 4 — Secondary screens
+- Decide how Grupos and Recorrentes are reached from inside Contas (no longer tabs).
 - Grupos (list, detail, settle, CRUD).
 - Recorrentes (list, deactivated section, edit, convert, deactivate, delete).
 - Categorias & orçamentos.
