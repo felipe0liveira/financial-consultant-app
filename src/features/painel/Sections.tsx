@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
-import Animated, { FadeInUp, useReducedMotion } from "react-native-reanimated";
+import Animated, { FadeInUp, FadeOut, LinearTransition, useReducedMotion } from "react-native-reanimated";
 import type { TransactionGroup } from "../../api/types";
 import { BILL_GROUP_LABELS, categoryColors, type BillGroup, type BillViewModel } from "../../domain/bills";
 import { formatBRL, formatMonthShort } from "../../domain/format";
 import { fonts, radii } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
-import { BillRow } from "../../ui/bills/BillRow";
+import { SwipeableBillRow } from "../../ui/bills/SwipeableBillRow";
 import { AreaChart } from "../../ui/charts/AreaChart";
 import { DonutChart } from "../../ui/charts/DonutChart";
 import { Skeleton } from "../../ui/Skeleton";
@@ -70,10 +70,11 @@ export function ChartSection({ months, values, loading, range, onRangeChange }: 
   );
 }
 
-export function UnpaidSection({ groups, allGroups = [], totalBills, onSelect, onSeeAll }: {
-  groups: BillGroup[]; allGroups?: TransactionGroup[]; totalBills: number; onSelect: (b: BillViewModel) => void; onSeeAll: () => void;
+export function UnpaidSection({ groups, allGroups = [], totalBills, month, onSelect, onSeeAll }: {
+  groups: BillGroup[]; month: string; allGroups?: TransactionGroup[]; totalBills: number; onSelect: (b: BillViewModel) => void; onSeeAll: () => void;
 }) {
   const { colors } = useTheme();
+  const reduced = useReducedMotion();
   const nonEmpty = groups.filter((g) => g.bills.length > 0);
   return (
     <SectionCard
@@ -95,7 +96,9 @@ export function UnpaidSection({ groups, allGroups = [], totalBills, onSelect, on
               {`${BILL_GROUP_LABELS[g.status]} · ${g.bills.length}`}
             </Text>
             {g.bills.map((b) => (
-              <BillRow key={b.selectionKey} bill={b} groups={allGroups} showPill={false} onPress={() => onSelect(b)} />
+              <Animated.View key={b.selectionKey} exiting={reduced ? undefined : FadeOut.duration(200)} layout={reduced ? undefined : LinearTransition}>
+                <SwipeableBillRow month={month} bill={b} groups={allGroups} showPill={false} onPress={() => onSelect(b)} />
+              </Animated.View>
             ))}
           </View>
         ))

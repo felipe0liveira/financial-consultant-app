@@ -118,7 +118,8 @@ export default function Painel() {
               groups={groups.filter((g) => g.status !== "paid")}
               totalBills={kpis.totalBills}
               allGroups={allGroups}
-              onSelect={openBill}
+              month={month}
+              onSelect={(b) => openBill(b, month)}
               onSeeAll={() => router.push({ pathname: "/contas", params: { month } })}
             />
             <UpcomingSection bills={upcomingBills(groups)} />

@@ -20,7 +20,7 @@ import { NetworkError } from "../../api/client";
 import { fonts } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useOpenBillDetails } from "../../ui/bills/BillDetailsSheet";
-import { BillRow } from "../../ui/bills/BillRow";
+import { SwipeableBillRow } from "../../ui/bills/SwipeableBillRow";
 import { Button } from "../../ui/Button";
 import { OfflineBanner } from "../../ui/OfflineBanner";
 import { OfflineEmpty } from "../../ui/OfflineEmpty";
@@ -171,12 +171,13 @@ export default function Contas() {
           ) : <View style={{ height: 12 }} />
         }
         renderItem={({ item, section }) => (
-          <BillRow
+          <SwipeableBillRow
+            month={month}
             bill={item}
             groups={groups}
             hideGroupId={section.groupId}
             showPill={effectiveGrouping !== "status" ? ["overdue", "due-today"].includes(item.status) : true}
-            onPress={() => openBill(item)}
+            onPress={() => openBill(item, month)}
           />
         )}
         ListEmptyComponent={emptyComponent}
