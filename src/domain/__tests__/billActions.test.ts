@@ -1,9 +1,9 @@
 jest.mock("../../config/env", () => ({ env: { bffUrl: "http://bff" } }));
 
 import { ApiError, NetworkError, SessionExpiredError } from "../../api/client";
-import type { Transaction } from "../../api/types";
+import type { MonthSummary, Transaction } from "../../api/types";
 import {
-  actionErrorMessage, billMatch, classifyActionError, deleteConfirmCopy, paySideAction,
+  actionErrorMessage, billMatch, classifyActionError, deleteConfirmCopy, mapSummary, paySideAction,
   shortMonthLabel, withConfirmed, withoutBill, withoutSeries,
 } from "../billActions";
 
@@ -66,4 +66,27 @@ test("pay side action", () => {
   expect(paySideAction(tx())).toBe("pay");
   expect(paySideAction(tx({ amount: 10 }))).toBe("receive");
   expect(paySideAction(tx({ confirmed: true }))).toBe("unpay");
+});
+
+const summary = (txs: Transaction[]): MonthSummary => ({
+  month: "2026-10", balance: 0, opening_balance: null, real_balance: 0, projected_balance: 0,
+  pending_expenses: 0, pending_income: 0, total_inflow: 0, opening_component: 0, income_component: 0,
+  overview: { total_income: 0, total_expenses: -150, confirmed_income: 0, confirmed_expenses: 0, confirmed_balance: 0 },
+  paid_count: 0, pending_count: 0, transactions: txs,
+});
+
+test("mapSummary: deleting a -100 bill reduces |total_expenses| by 100", () => {
+  const data = summary([tx(), tx({ day: 11, amount: -50 })]);
+  const out = mapSummary(data, (t) => withoutBill(t, billMatch(tx(), "2026-10")))!;
+  expect(out.transactions).toHaveLength(1);
+  expect(Math.abs(out.overview.total_expenses)).toBe(50);
+});
+
+test("mapSummary: confirming a -50 bill changes confirmed_expenses only", () => {
+  const data = summary([tx(), tx({ day: 11, amount: -50 })]);
+  const m = billMatch(tx({ day: 11, amount: -50 }), "2026-10");
+  const out = mapSummary(data, (t) => withConfirmed(t, m, true))!;
+  expect(out.overview.confirmed_expenses).toBe(-50);
+  expect(out.overview.confirmed_balance).toBe(-50);
+  expect(out.overview.total_expenses).toBe(-150);
 });

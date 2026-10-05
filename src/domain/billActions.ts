@@ -39,8 +39,44 @@ type Pages = { pages: MonthTransactionsPage[]; pageParams: unknown[] };
 export function mapPages(data: Pages | undefined, f: (txs: Transaction[]) => Transaction[]): Pages | undefined {
   return data ? { ...data, pages: data.pages.map((p) => ({ ...p, items: f(p.items) })) } : data;
 }
+function totals(txs: Transaction[]) {
+  const t = { expenses: 0, income: 0, confirmedExpenses: 0, confirmedIncome: 0 };
+  for (const tx of txs) {
+    if (tx.skipped) continue;
+    if (tx.amount < 0) {
+      t.expenses += tx.amount;
+      if (tx.confirmed) t.confirmedExpenses += tx.amount;
+    } else if (tx.amount > 0) {
+      t.income += tx.amount;
+      if (tx.confirmed) t.confirmedIncome += tx.amount;
+    }
+  }
+  return t;
+}
+
+/** Patches the summary's transactions with `f` and keeps `overview` consistent with the result. */
 export function mapSummary(data: MonthSummary | undefined, f: (txs: Transaction[]) => Transaction[]): MonthSummary | undefined {
-  return data ? { ...data, transactions: f(data.transactions ?? []) } : data;
+  if (!data) return data;
+  const before = data.transactions ?? [];
+  const after = f(before);
+  if (!data.overview) return { ...data, transactions: after };
+  const b = totals(before);
+  const a = totals(after);
+  const dConfirmedIncome = a.confirmedIncome - b.confirmedIncome;
+  const dConfirmedExpenses = a.confirmedExpenses - b.confirmedExpenses;
+  const o = data.overview;
+  return {
+    ...data,
+    transactions: after,
+    overview: {
+      ...o,
+      total_expenses: o.total_expenses + (a.expenses - b.expenses),
+      total_income: o.total_income + (a.income - b.income),
+      confirmed_expenses: o.confirmed_expenses + dConfirmedExpenses,
+      confirmed_income: o.confirmed_income + dConfirmedIncome,
+      confirmed_balance: o.confirmed_balance + dConfirmedIncome + dConfirmedExpenses,
+    },
+  };
 }
 
 /** Maps any action failure to a kind (the BFF reports upstream 409/404 as 500 with the status in the text). */
