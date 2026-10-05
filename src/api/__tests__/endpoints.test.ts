@@ -1,6 +1,14 @@
 jest.mock("../client", () => ({ apiFetch: jest.fn().mockResolvedValue({}) }));
 import { apiFetch } from "../client";
-import { getGroups, getMonth, getMonthTransactions, searchTransactions } from "../endpoints";
+import {
+  deleteInstallmentSeries,
+  deleteTransaction,
+  getGroups,
+  getMonth,
+  getMonthTransactions,
+  searchTransactions,
+  setTransactionConfirmed,
+} from "../endpoints";
 
 const calls = () => (apiFetch as jest.Mock).mock.calls.map((c) => c[0]);
 beforeEach(() => (apiFetch as jest.Mock).mockClear());
@@ -18,4 +26,15 @@ test("paths match the BFF routes", async () => {
     "transactions/search?description=luz&month=2026-10",
     "groups",
   ]);
+});
+
+test("write routes and bodies", async () => {
+  const m = { month: "2026-10", description: "Luz", matchDay: 10, matchAmount: -100 };
+  await setTransactionConfirmed(m, true);
+  await deleteTransaction(m);
+  await deleteInstallmentSeries("s 1");
+  const c = (apiFetch as jest.Mock).mock.calls;
+  expect(c[0]).toEqual(["transactions", { method: "PATCH", body: JSON.stringify({ ...m, confirmed: true }) }]);
+  expect(c[1]).toEqual(["transactions", { method: "DELETE", body: JSON.stringify(m) }]);
+  expect(c[2]).toEqual(["installments/s%201", { method: "DELETE" }]);
 });
