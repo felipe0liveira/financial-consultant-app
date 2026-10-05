@@ -42,8 +42,9 @@ export default function Painel() {
   const kpis = derivePainelKpis(groups, bills.data);
   // One "mês quitado" card replaces the KPI cards while every expense is paid.
   const settled = bills.data ? deriveSettled(bills.data.transactions ?? [], month, new Date()) : null;
+  const isSettled = !!settled;
   const nextMonth = nextMonthOf(month);
-  const nextQuery = useQuery({ queryKey: ["month", nextMonth], queryFn: () => getMonth(nextMonth), enabled: !!settled });
+  const nextQuery = useQuery({ queryKey: ["month", nextMonth], queryFn: () => getMonth(nextMonth), enabled: isSettled });
   const preview = nextQuery.data ? deriveNextMonthPreview(nextQuery.data.transactions ?? [], nextMonth, new Date()) : null;
   const hasData = !!bills.data;
   const groupsQuery = useGroups();
@@ -59,16 +60,16 @@ export default function Painel() {
         return;
       }
       const cache = queryClient.getQueryCache();
-      for (const m of new Set([month, ...months, ...(settled ? [nextMonth] : [])])) {
+      for (const m of new Set([month, ...months, ...(isSettled ? [nextMonth] : [])])) {
         if (cache.find({ queryKey: ["month", m] })?.isStale()) void queryClient.refetchQueries({ queryKey: ["month", m] });
       }
-    }, [queryClient, month, months, settled, nextMonth]),
+    }, [queryClient, month, months, isSettled, nextMonth]),
   );
 
   const refresh = async () => {
     setPulling(true);
     try {
-      await Promise.all([bills.refetch(), ...history.map((h) => h.refetch()), ...(settled ? [nextQuery.refetch()] : [])]);
+      await Promise.all([bills.refetch(), ...history.map((h) => h.refetch()), ...(isSettled ? [nextQuery.refetch()] : [])]);
     } finally {
       setPulling(false);
     }
