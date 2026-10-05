@@ -1,5 +1,8 @@
 import type { ComponentProps } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
+// Gesture-handler Pressable: it joins the native gesture system, so a swipe on the row
+// cancels the press instead of also opening the details (see SwipeableBillRow).
+import { Pressable } from "react-native-gesture-handler";
 import type { TransactionGroup } from "../../api/types";
 import type { BillViewModel } from "../../domain/bills";
 import { formatBRL } from "../../domain/format";

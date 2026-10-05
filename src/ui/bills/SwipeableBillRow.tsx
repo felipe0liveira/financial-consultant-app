@@ -10,6 +10,9 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { BillRow } from "./BillRow";
 import { isFullSwipe, PAY_LABELS } from "./swipe";
 
+/** Ignore a row press this soon after a swipe gesture started. */
+const DRAG_PRESS_GUARD_MS = 400;
+
 type Props = ComponentProps<typeof BillRow> & { month: string };
 
 const ACTION_WIDTH = 96;
@@ -32,6 +35,10 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
   const requireOnline = useRequireOnline();
   const ref = useRef<SwipeableMethods>(null);
   const lastX = useRef(0);
+  // A drag must never also open the details (iOS Mail behaviour): a press that lands within
+  // DRAG_PRESS_GUARD_MS of a drag, or while the actions are open, only closes the row.
+  const lastDragAt = useRef(0);
+  const isOpen = useRef(false);
   const [width, setWidth] = useState(0);
   const side = paySideAction(bill);
 
@@ -45,6 +52,14 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
       { text: "Cancelar", style: "cancel" },
       { text: "Excluir", style: "destructive", onPress: () => deleteBill(bill, month, copy.seriesId) },
     ]);
+  };
+
+  const onRowPress = () => {
+    if (isOpen.current || Date.now() - lastDragAt.current < DRAG_PRESS_GUARD_MS) {
+      ref.current?.close();
+      return;
+    }
+    rowProps.onPress();
   };
 
   const payBg = side === "unpay" ? colors.inkSoft : colors.ok;
@@ -89,6 +104,10 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
             {action("Excluir", colors.danger, askDelete, "right")}
           </>
         )}
+        onSwipeableOpenStartDrag={() => { lastDragAt.current = Date.now(); }}
+        onSwipeableCloseStartDrag={() => { lastDragAt.current = Date.now(); }}
+        onSwipeableOpen={() => { isOpen.current = true; }}
+        onSwipeableClose={() => { isOpen.current = false; }}
         onSwipeableWillOpen={(direction) => {
           if (!isFullSwipe(lastX.current, width)) return;
           if (direction === SwipeDirection.RIGHT) pay(); else askDelete();
@@ -97,6 +116,7 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
         <View style={{ backgroundColor: colors.panel }}>
           <BillRow
             {...rowProps}
+            onPress={onRowPress}
             accessibilityActions={[{ name: "pay", label: PAY_LABELS[side] }, { name: "delete", label: "Excluir" }]}
             onAccessibilityAction={(e) => (e.nativeEvent.actionName === "pay" ? pay() : askDelete())}
           />
