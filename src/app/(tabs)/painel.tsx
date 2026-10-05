@@ -2,7 +2,8 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getMonth } from "../../api/endpoints";
 import { NetworkError } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { firstName } from "../../auth/session";
@@ -10,6 +11,8 @@ import { currentMonth, lastNMonths } from "../../domain/bills";
 import { formatHeaderDate } from "../../domain/format";
 import { categoryTotals, derivePainelKpis, expenseSeries, upcomingBills } from "../../features/painel/derive";
 import { KpiCards } from "../../features/painel/KpiCards";
+import { SettledCard } from "../../features/painel/SettledCard";
+import { deriveNextMonthPreview, deriveSettled, nextMonthOf } from "../../features/painel/settled";
 import { CategorySection, ChartSection, UnpaidSection, UpcomingSection } from "../../features/painel/Sections";
 import { useBills, useGroups, useMonthHistory } from "../../hooks/data";
 import { useOnline } from "../../hooks/status";
@@ -37,6 +40,11 @@ export default function Painel() {
   const history = useMonthHistory(months);
   const groups = bills.groups ?? [];
   const kpis = derivePainelKpis(groups, bills.data);
+  // One "mês quitado" card replaces the KPI cards while every expense is paid.
+  const settled = bills.data ? deriveSettled(bills.data.transactions ?? [], month, new Date()) : null;
+  const nextMonth = nextMonthOf(month);
+  const nextQuery = useQuery({ queryKey: ["month", nextMonth], queryFn: () => getMonth(nextMonth), enabled: !!settled });
+  const preview = nextQuery.data ? deriveNextMonthPreview(nextQuery.data.transactions ?? [], nextMonth, new Date()) : null;
   const hasData = !!bills.data;
   const groupsQuery = useGroups();
   const allGroups = groupsQuery.data?.items ?? [];
@@ -51,16 +59,16 @@ export default function Painel() {
         return;
       }
       const cache = queryClient.getQueryCache();
-      for (const m of new Set([month, ...months])) {
+      for (const m of new Set([month, ...months, ...(settled ? [nextMonth] : [])])) {
         if (cache.find({ queryKey: ["month", m] })?.isStale()) void queryClient.refetchQueries({ queryKey: ["month", m] });
       }
-    }, [queryClient, month, months]),
+    }, [queryClient, month, months, settled, nextMonth]),
   );
 
   const refresh = async () => {
     setPulling(true);
     try {
-      await Promise.all([bills.refetch(), ...history.map((h) => h.refetch())]);
+      await Promise.all([bills.refetch(), ...history.map((h) => h.refetch()), ...(settled ? [nextQuery.refetch()] : [])]);
     } finally {
       setPulling(false);
     }
@@ -110,7 +118,16 @@ export default function Painel() {
         ) : null}
         {hasData ? (
           <>
-            <KpiCards kpis={kpis} />
+            {settled ? (
+              <SettledCard
+                month={month}
+                summary={settled}
+                preview={nextQuery.isError ? null : preview}
+                onOpenNextMonth={(m) => router.push({ pathname: "/contas", params: { month: m } })}
+              />
+            ) : (
+              <KpiCards kpis={kpis} />
+            )}
             <ChartSection
               months={months}
               values={expenseSeries(history.map((h) => h.data))}
