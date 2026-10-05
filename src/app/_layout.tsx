@@ -43,6 +43,15 @@ function RootNavigator() {
               contentStyle: { backgroundColor: colors.panel },
             }}
           />
+          <Stack.Screen
+            name="new-bill"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: [1.0],
+              sheetGrabberVisible: true,
+              contentStyle: { backgroundColor: colors.panel },
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </>
