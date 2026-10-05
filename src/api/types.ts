@@ -158,3 +158,26 @@ export interface TransactionGroup {
 export interface GroupsResponse {
   items: TransactionGroup[];
 }
+
+/** Body of POST /api/v1/transactions — mirrors the web's CreateBillInput (lib/api.ts). */
+export interface CreateBillInput {
+  month: string; // "YYYY-MM"
+  day: number;
+  category: string;
+  description: string;
+  /** Positive magnitude in reais; `direction` decides the sign server-side. */
+  amount: number;
+  direction: BillDirection;
+  recurring: boolean;
+  installmentCurrent?: number;
+  installmentTotal?: number;
+  installmentBackfillPaid?: boolean;
+  recurringBackfillPaid?: boolean;
+}
+
+/** Result of POST /api/v1/categories (idempotent: an existing name returns already_exists). */
+export interface AddCategoryResult {
+  status: string;
+  name: string;
+  already_exists?: boolean;
+}
