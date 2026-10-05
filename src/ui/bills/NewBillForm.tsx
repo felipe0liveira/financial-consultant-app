@@ -134,23 +134,28 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.panel }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Cancelar" onPress={onClose} hitSlop={12} disabled={saving}>
-          <Text style={{ color: colors.accent, fontSize: 16, opacity: saving ? 0.5 : 1 }}>Cancelar</Text>
-        </Pressable>
-        <Text accessibilityRole="header" style={{ fontFamily: fonts.displaySemi, fontSize: 18, color: colors.ink }}>Nova conta</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={saving ? "Salvando…" : "Salvar"} accessibilityState={{ busy: saving, disabled: saving }} onPress={() => void save()} hitSlop={12} disabled={saving}>
-          <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700", opacity: saving ? 0.6 : 1 }}>{saving ? "Salvando…" : "Salvar"}</Text>
-        </Pressable>
+    // react-native-screens sizes a form sheet's ScrollView only when it is a direct child of the
+    // sheet, optionally preceded by ONE non-collapsable header view — so no wrapping root view.
+    <>
+      <View collapsable={false} style={{ backgroundColor: colors.panel }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Cancelar" onPress={onClose} hitSlop={12} disabled={saving}>
+            <Text style={{ color: colors.accent, fontSize: 16, opacity: saving ? 0.5 : 1 }}>Cancelar</Text>
+          </Pressable>
+          <Text accessibilityRole="header" style={{ fontFamily: fonts.displaySemi, fontSize: 18, color: colors.ink }}>Nova conta</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={saving ? "Salvando…" : "Salvar"} accessibilityState={{ busy: saving, disabled: saving }} onPress={() => void save()} hitSlop={12} disabled={saving}>
+            <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700", opacity: saving ? 0.6 : 1 }}>{saving ? "Salvando…" : "Salvar"}</Text>
+          </Pressable>
+        </View>
+        {/* Pinned under the top bar so it is never below the fold or behind the keyboard. */}
+        {error ? (
+          <Text accessibilityRole="alert" style={{ marginHorizontal: 20, marginBottom: 12, color: colors.danger, backgroundColor: colors.dangerBg, borderRadius: 10, padding: 12, overflow: "hidden" }}>
+            {error}
+          </Text>
+        ) : null}
       </View>
-      {/* Pinned under the top bar so it is never below the fold or behind the keyboard. */}
-      {error ? (
-        <Text accessibilityRole="alert" style={{ marginHorizontal: 20, marginBottom: 12, color: colors.danger, backgroundColor: colors.dangerBg, borderRadius: 10, padding: 12, overflow: "hidden" }}>
-          {error}
-        </Text>
-      ) : null}
       <ScrollView
+        style={{ backgroundColor: colors.panel }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 24) + 24, gap: 18 }}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
@@ -257,6 +262,6 @@ export function NewBillForm({ month, onClose }: { month: string; onClose: () => 
 
         </View>
       </ScrollView>
-    </View>
+    </>
   );
 }
