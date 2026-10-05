@@ -1,7 +1,7 @@
 import { useRef, useState, type ComponentProps } from "react";
 import { Alert, Pressable, Text, View, type LayoutChangeEvent } from "react-native";
 import ReanimatedSwipeable, { SwipeDirection, type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
-import { useAnimatedReaction, type SharedValue } from "react-native-reanimated";
+import Animated, { useAnimatedReaction, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { currentMonth } from "../../domain/bills";
 import { deleteConfirmCopy, paySideAction } from "../../domain/billActions";
@@ -12,10 +12,17 @@ import { isFullSwipe, PAY_LABELS } from "./swipe";
 
 /** Ignore a row press this soon after a swipe gesture started. */
 const DRAG_PRESS_GUARD_MS = 400;
+/**
+ * Breathing room between a revealed action and the row content (icon on one side, amount on
+ * the other). The action stays aligned with the list edge; its colour stops this far short of
+ * the sliding row.
+ */
+const ACTION_GAP = 12;
 
 type Props = ComponentProps<typeof BillRow> & { month: string };
 
-const ACTION_WIDTH = 96;
+/** Revealed width of an action: a 96 pt button plus the gap to the row. */
+const ACTION_WIDTH = 96 + ACTION_GAP;
 
 /** Mirrors the swipe translation to the JS thread so a release can be classified as a full swipe. */
 function TrackTranslation({ translation, onChange }: { translation: SharedValue<number>; onChange: (x: number) => void }) {
@@ -24,6 +31,30 @@ function TrackTranslation({ translation, onChange }: { translation: SharedValue<
     (x) => { scheduleOnRN(onChange, x); },
   );
   return null;
+}
+
+/**
+ * A revealed swipe action. The tappable button is anchored at the list edge; the colour fill
+ * follows the drag (|translation| − ACTION_GAP), so a gap always separates it from the row and
+ * a long drag keeps showing the action colour.
+ */
+function ActionPanel({ translation, edge, label, bg, onPress }: {
+  translation: SharedValue<number>; edge: "left" | "right"; label: string; bg: string; onPress: () => void;
+}) {
+  const fill = useAnimatedStyle(() => ({ width: Math.max(0, Math.abs(translation.value) - ACTION_GAP) }));
+  return (
+    <View style={{ width: ACTION_WIDTH }}>
+      <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, backgroundColor: bg, [edge]: 0 }, fill]} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={onPress}
+        style={{ position: "absolute", top: 0, bottom: 0, [edge]: 0, width: ACTION_WIDTH - ACTION_GAP, justifyContent: "center", alignItems: "center", paddingHorizontal: 8 }}
+      >
+        <Text style={{ color: "#FFFFFF", fontWeight: "700", textAlign: "center" }}>{label}</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 /** A bill row with Mail-style swipe actions (spec Q1, Q2, Q6, Q7, Q16). */
@@ -63,21 +94,6 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
   };
 
   const payBg = side === "unpay" ? colors.inkSoft : colors.ok;
-  // The panel is ACTION_WIDTH wide (so the row rests there when opened); the coloured fill
-  // extends over the whole row so a long drag keeps showing the action colour.
-  const action = (label: string, bg: string, onPress: () => void, edge: "left" | "right") => (
-    <View style={{ width: ACTION_WIDTH }}>
-      <View style={{ position: "absolute", top: 0, bottom: 0, width: width || 400, backgroundColor: bg, [edge]: 0 }} />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        onPress={onPress}
-        style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 8 }}
-      >
-        <Text style={{ color: "#FFFFFF", fontWeight: "700", textAlign: "center" }}>{label}</Text>
-      </Pressable>
-    </View>
-  );
 
   return (
     <View
@@ -95,13 +111,13 @@ export function SwipeableBillRow({ month, ...rowProps }: Props) {
         renderLeftActions={(_p, translation) => (
           <>
             <TrackTranslation translation={translation} onChange={trackX} />
-            {action(PAY_LABELS[side], payBg, pay, "left")}
+            <ActionPanel translation={translation} edge="left" label={PAY_LABELS[side]} bg={payBg} onPress={pay} />
           </>
         )}
         renderRightActions={(_p, translation) => (
           <>
             <TrackTranslation translation={translation} onChange={trackX} />
-            {action("Excluir", colors.danger, askDelete, "right")}
+            <ActionPanel translation={translation} edge="right" label="Excluir" bg={colors.danger} onPress={askDelete} />
           </>
         )}
         onSwipeableOpenStartDrag={() => { lastDragAt.current = Date.now(); }}
