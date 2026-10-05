@@ -99,7 +99,10 @@ Android later). Decide before Phase 5.
 ### Phase 3 — Write core: bills
 - Nova conta (installment `N/M` shortcut, recurring + backfill, currency mask, inline new category).
 - Editar conta with recurring scope and installment series rules.
-- Pay / un-pay, delete (incl. "Excluir parcelamento?"), convert to recurring.
+- Pay / un-pay, delete (incl. "Excluir parcelamento?") — ✅ delivered in **3a** (2026-10-05): Mail-style
+  swipe actions on rows (right = pay/receive/undo, left = delete), details-sheet footer, 5 s
+  "Desfazer" toast, optimistic updates with rollback, offline blocking.
+- Convert to recurring.
 - **409 ambiguous** disambiguation and 409 duplicate handling.
 - Select mode + quick sum + add to group.
 - Optimistic updates + haptics on pay/delete.
